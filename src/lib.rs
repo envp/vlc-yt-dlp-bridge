@@ -84,7 +84,7 @@ fn exact_video(height: u16) -> String {
 
 fn resolve(url: &str, mode: &str, cancelled: Cancelled) -> Result<String, &'static str> {
     let video = "b[protocol=https][ext=mp4]/b[protocol=https]/b[protocol^=m3u8]";
-    let audio = format!("ba[protocol=https]/{video}");
+    let audio = format!("ba[protocol^=m3u8]/ba[protocol=https]/{video}");
     let hd = format!(
         "bv[protocol=https][vcodec^=avc1][height>=720]+ba[protocol=https][ext=m4a]/bv[protocol=https][height>=720]+ba[protocol=https]/{video}"
     );
