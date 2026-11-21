@@ -1,0 +1,33 @@
+name: Build Windows plugin
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Build release helper
+        run: cargo +stable build --release --locked
+
+      - name: Stage plugin
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item -Path target/release/vlc-youtube-bridge.exe, vlc-youtube-bridge.lua, README.md, LICENSE -Destination package
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v7
+        with:
+          name: vlc-youtube-bridge-windows-x64
+          path: package/
+          if-no-files-found: error
