@@ -17,17 +17,15 @@ jobs:
           persist-credentials: false
 
       - name: Build native VLC module
-        shell: pwsh
         run: |
-          .\native\build.ps1
-          cargo test --lib --locked
+          cargo build --release --locked
+          cargo test --lib --locked --no-default-features
 
       - name: Stage plugin
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path package | Out-Null
-          Copy-Item -Path target/release/libyoutube_bridge_plugin.dll, vlc-youtube-bridge.lua, install.ps1, README.md, LICENSE -Destination package
-          Copy-Item -Path lua -Destination package -Recurse
+          Copy-Item -Path target/release/libyoutube_bridge_plugin.dll, target/release/install-bridge.exe, README.md, LICENSE -Destination package
 
       - name: Upload plugin
         uses: actions/upload-artifact@v7

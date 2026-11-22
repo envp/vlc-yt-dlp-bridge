@@ -6,12 +6,13 @@ A Windows x64 VLC 3.0.24 plugin for YouTube and YouTube Music. A native VLC modu
 
 Use desktop VLC, the standalone Windows yt-dlp executable, and Deno. Make sure `yt-dlp.exe` and `deno.exe` are on PATH. See [yt-dlp's YouTube runtime setup](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
 
-To install a prebuilt copy, download and extract the Windows artifact from the [Actions tab](https://github.com/envp/vlc-yt-dlp-bridge/actions). Use the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) if the DLL fails to load. Run `.\install.ps1 -Prebuilt` in the extracted folder. The script registers a plugin directory in your user-level `VLC_PLUGIN_PATH`.
+To install a prebuilt copy, download and extract the Windows artifact from the [Actions tab](https://github.com/envp/vlc-yt-dlp-bridge/actions). Run `install-bridge.exe` alongside the DLL. The installer registers a plugin directory in your user-level `VLC_PLUGIN_PATH`. If the DLL fails to load, install the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
 
-To build from source, install Rust with Cargo, LLVM Clang on PATH, the MSVC C++ x64 build tools, and a Windows SDK. The build downloads and verifies the VLC 3.0.24 source headers. From PowerShell in this folder, run:
+To build from source, install Rust with Cargo, LLVM `clang-cl.exe` on PATH, the MSVC C++ x64 build tools, and a Windows SDK. Cargo generates the C header with cbindgen and builds the DLL. It downloads and verifies the VLC 3.0.24 source headers unless you set `VLC_INCLUDE_DIR` to an existing copy.
 
 ```powershell
-.\install.ps1
+cargo build --release --locked
+.\target\release\install-bridge.exe
 ```
 
 Restart VLC and choose **View → YouTube Bridge**. Paste a video, track, or playlist link. Click **Play video** for automatic video quality or **Listen** for audio only. The dialog closes when VLC accepts the request. **Open in browser** opens YouTube in your default browser.
@@ -27,3 +28,7 @@ To queue a public playlist, use its playlist page link with `/playlist?list=…`
 Use **Open in browser** to use your existing YouTube session or sign in there. Private videos, account features, and Premium playback stay in the official player. The bridge never reads browser cookies, credentials, or Google tokens. It also ignores yt-dlp user configuration and plugins so they cannot add account access to bridge requests.
 
 VLC playback uses anonymous yt-dlp requests and can break when YouTube changes stream delivery. YouTube restricts automated access in its [Terms of Service](https://www.youtube.com/t/terms). Use the browser option for official playback.
+
+## Core tests
+
+Run `cargo test --lib --locked --no-default-features` to test the Rust API without compiling the VLC shim. The core tests require neither VLC nor YouTube access. Windows also runs the subprocess timeout and cancellation tests.

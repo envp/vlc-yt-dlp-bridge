@@ -3,6 +3,22 @@ name = "vlc-youtube-bridge"
 version = "0.1.0"
 edition = "2021"
 publish = false
+description = "Native VLC bridge for YouTube and YouTube Music"
+license = "MIT"
 
 [lib]
-crate-type = ["staticlib"]
+name = "libyoutube_bridge_plugin"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["native-plugin"]
+native-plugin = []
+
+[build-dependencies]
+cbindgen = { version = "0.29.4", default-features = false }
+cc = "1"
+sha2 = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+sha2 = "0.10"
+winreg = "0.55"

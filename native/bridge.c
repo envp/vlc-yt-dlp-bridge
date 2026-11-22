@@ -13,8 +13,7 @@ typedef SSIZE_T ssize_t;
 #include <vlc_plugin.h>
 #include <vlc_stream.h>
 
-char *bridge_run(const char *request, bool *succeeded, bool (*cancelled)(void));
-void bridge_free(char *output);
+#include "youtube_bridge.h"
 
 struct response {
     char *text;
