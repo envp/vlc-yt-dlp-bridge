@@ -110,8 +110,12 @@ static int ReadTrack(stream_t *stream, input_item_node_t *node)
     } else if (strlen(request) >= 6 && strcmp(request + strlen(request) - 6, "/audio") == 0) {
         result = input_item_AddOption(item, "no-video", VLC_INPUT_OPTION_TRUSTED);
     }
-    if (result == VLC_SUCCESS && input_item_node_AppendItem(node, item) == NULL)
-        result = VLC_ENOMEM;
+    if (result == VLC_SUCCESS) {
+        if (input_item_node_AppendItem(node, item) == NULL)
+            result = VLC_ENOMEM;
+        else if (*artwork != '\0')
+            libvlc_ArtRequest(stream->obj.libvlc, item, META_REQUEST_OPTION_NONE);
+    }
     input_item_Release(item);
     bridge_free(response);
     return result;

@@ -5,5 +5,6 @@ EXPORTS
     input_item_Release
     input_item_SetMeta
     input_item_node_AppendItem
+    libvlc_ArtRequest
     vlc_Log
     vlc_killed
