@@ -10,7 +10,7 @@ A Windows x64 VLC 3.0.24 plugin for YouTube and YouTube Music. A native VLC modu
 4. Run `install-bridge.exe` from the extracted folder with `libyoutube_bridge_plugin.dll` beside it. The installer writes to your VLC profile and registers its plugin path for your Windows account. Administrator access is unnecessary.
 5. Close all VLC windows and reopen VLC from the Start menu. Choose **View → YouTube Bridge**.
 
-If the dialog reports that the native module is unavailable, verify that you're running VLC 3.0.24 x64 and install the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). If VLC reports HTTP 403, try reopening the original link or use **Open in browser**.
+If the dialog reports that the native module is unavailable, verify that you're running VLC 3.0.24 x64 and install the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). If VLC reports HTTP 403, try reopening the original link or playing it on YouTube.
 
 ## Build from source
 
@@ -23,7 +23,7 @@ cargo build --release --locked
 
 ## Play a video or track
 
-In **View → YouTube Bridge**, paste a video, track, or playlist link. Click **Play video** for automatic video quality or **Listen** for audio only. The dialog closes when VLC accepts the request. **Open in browser** opens YouTube in your default browser.
+In **View → YouTube Bridge**, paste a video, track, or playlist link. Click **Play video** for automatic video quality or **Listen** for audio only. The dialog closes when VLC accepts the request.
 
 You can also drag a YouTube link from your browser into VLC's main window or paste it into **Media → Open Network Stream**. Direct links use video mode for YouTube and audio mode for YouTube Music. If a resolved link expires, open the original YouTube link again.
 
@@ -33,13 +33,13 @@ The **General** tab also shows the track thumbnail once VLC downloads it. VLC's 
 
 ## Playlists
 
-To queue a public playlist, use its playlist page link with `/playlist?list=…`. A watch link opens its individual video even when the link includes a playlist ID. VLC expands the playlist and resolves each track when it starts, so a transition can take a few seconds. Use **Open in browser** for playlists that require an account.
+To queue a public playlist, use its playlist page link with `/playlist?list=…`. A watch link opens its individual video even when the link includes a playlist ID. VLC expands the playlist and resolves each track when it starts, so a transition can take a few seconds.
 
-## Google sign-in
+## Playback and privacy
 
-Use **Open in browser** to use your existing YouTube session or sign in there. Private videos, account features, and Premium playback stay in the official player. The bridge never reads browser cookies, credentials, or Google tokens. It also ignores yt-dlp user configuration and plugins so they cannot add account access to bridge requests.
+Private videos, account features, and Premium playback stay in the official player. The bridge never reads browser cookies, credentials, or Google tokens. It also ignores yt-dlp user configuration and plugins so they cannot add account access to bridge requests.
 
-VLC playback uses anonymous yt-dlp requests and can break when YouTube changes stream delivery. YouTube restricts automated access in its [Terms of Service](https://www.youtube.com/t/terms). Use the browser option for official playback.
+VLC playback uses anonymous yt-dlp requests and can break when YouTube changes stream delivery. YouTube restricts automated access in its [Terms of Service](https://www.youtube.com/t/terms).
 
 ## Architecture
 
@@ -55,7 +55,6 @@ flowchart LR
     Rust --> YTDLP["yt-dlp child process"]
     YTDLP --> YouTube["YouTube"]
     Native --> Player["VLC playback and artwork cache"]
-    Dialog --> Browser["Default browser for sign-in"]
 ```
 
 - The Lua dialog and playlist parser share link validation and translate supported links into internal `ytbridge://` requests.

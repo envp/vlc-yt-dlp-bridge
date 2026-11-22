@@ -36,22 +36,6 @@ local function play(audio_only)
     end
 end
 
-local function browser()
-    local text = link:get_text():match("^%s*(.-)%s*$")
-    local id, list = links.parse(text)
-    if text ~= "" and not id and not list then
-        status:set_text("Paste a valid YouTube link or video ID.")
-        return
-    end
-    local action = list and ("playlist-browser/" .. list) or id and ("browser/" .. id) or "browser"
-    local result = query(action)
-    if result and result:match("^Sign in on YouTube") then
-        vlc.deactivate()
-    else
-        status:set_text(result or missing_module)
-    end
-end
-
 function activate()
     local ok, parser = pcall(require, "ytbridge-links")
     links = ok and parser or nil
@@ -61,12 +45,11 @@ function activate()
         dialog:show()
         return
     end
-    dialog:add_label("YouTube video, track, or playlist link", 1, 1, 3, 1)
-    link = dialog:add_text_input("", 1, 2, 3, 1, 420)
+    dialog:add_label("YouTube video, track, or playlist link", 1, 1, 2, 1)
+    link = dialog:add_text_input("", 1, 2, 2, 1, 420)
     dialog:add_button("Play video", function() play(false) end, 1, 3)
     dialog:add_button("Listen", function() play(true) end, 2, 3)
-    dialog:add_button("Open in browser", browser, 3, 3)
-    status = dialog:add_label("", 1, 4, 3, 1)
+    status = dialog:add_label("", 1, 4, 2, 1)
     dialog:show()
 end
 

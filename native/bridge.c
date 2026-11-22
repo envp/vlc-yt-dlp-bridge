@@ -181,9 +181,7 @@ static int Open(vlc_object_t *object)
         stream->pf_readdir = ReadPlaylist;
     } else if (starts_with(location, "query/") && stream->p_input == NULL) {
         const char *query = location + sizeof("query/") - 1;
-        if (strcmp(query, "ping") != 0 && strcmp(query, "browser") != 0
-            && !starts_with(query, "qualities/") && !starts_with(query, "browser/")
-            && !starts_with(query, "playlist-browser/"))
+        if (strcmp(query, "ping") != 0 && !starts_with(query, "qualities/"))
             return VLC_EGENERIC;
         struct response *response = calloc(1, sizeof(*response));
         if (response == NULL)

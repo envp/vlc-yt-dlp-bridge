@@ -104,8 +104,9 @@ mod api_tests {
             "play/SmMS5H5XChU",
             "qualities/SmMS5H5XCh!",
             "playlist/PL?unexpected",
-            "playlist-browser/x",
-            "browser/SmMS5H5XCh!",
+            "playlist-browser/PLvalid",
+            "browser/SmMS5H5XChU",
+            "browser",
         ] {
             let (succeeded, response) = request(input.as_bytes(), true);
             assert!(!succeeded, "{input}");

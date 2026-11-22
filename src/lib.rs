@@ -1,4 +1,3 @@
-mod browser;
 mod ffi;
 mod process;
 mod request;
