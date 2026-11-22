@@ -2,11 +2,17 @@
 
 A Windows x64 VLC 3.0.24 plugin for YouTube and YouTube Music. A native VLC module uses Rust to run yt-dlp directly with a hidden child process. The Lua extension provides the controls under VLC's View menu.
 
-## Install
+## Install on Windows x64
 
-Use desktop VLC, the standalone Windows yt-dlp executable, and Deno. Make sure `yt-dlp.exe` and `deno.exe` are on PATH. See [yt-dlp's YouTube runtime setup](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
+1. Install desktop **VLC 3.0.24 x64**. [VLC Windows downloads](https://download.videolan.org/vlc/3.0.24/win64/)
+2. Install the standalone Windows x64 **yt-dlp** executable and **Deno**. Both `yt-dlp.exe` and `deno.exe` must be on your user or system PATH. After installing them, open a fresh terminal and check `yt-dlp --version` and `deno --version`. [yt-dlp downloads](https://github.com/yt-dlp/yt-dlp/releases/latest) · [Deno installation](https://docs.deno.com/runtime/getting_started/installation/)
+3. Download the **Windows x64 ZIP** under **Assets** and extract it. Use the ZIP whose name starts with `vlc-youtube-bridge-v`. [GitHub Releases](https://github.com/envp/vlc-yt-dlp-bridge/releases/latest)
+4. Run `install-bridge.exe` from the extracted folder with `libyoutube_bridge_plugin.dll` beside it. The installer writes to your VLC profile and registers its plugin path for your Windows account. Administrator access is unnecessary.
+5. Close all VLC windows and reopen VLC from the Start menu. Choose **View → YouTube Bridge**.
 
-To install a prebuilt copy, download and extract the Windows artifact from the [Actions tab](https://github.com/envp/vlc-yt-dlp-bridge/actions). Run `install-bridge.exe` alongside the DLL. The installer registers a plugin directory in your user-level `VLC_PLUGIN_PATH`. If the DLL fails to load, install the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+If the dialog reports that the native module is unavailable, verify that you're running VLC 3.0.24 x64 and install the [Microsoft Visual C++ x64 Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). If VLC reports HTTP 403, try reopening the original link or use **Open in browser**.
+
+## Build from source
 
 To build from source, install Rust with Cargo, LLVM `clang-cl.exe` on PATH, the MSVC C++ x64 build tools, and a Windows SDK. Cargo generates the C header with cbindgen and builds the DLL. It downloads and verifies the VLC 3.0.24 source headers unless you set `VLC_INCLUDE_DIR` to an existing copy.
 
@@ -15,11 +21,15 @@ cargo build --release --locked
 .\target\release\install-bridge.exe
 ```
 
-Restart VLC and choose **View → YouTube Bridge**. Paste a video, track, or playlist link. Click **Play video** for automatic video quality or **Listen** for audio only. The dialog closes when VLC accepts the request. **Open in browser** opens YouTube in your default browser.
+## Play a video or track
+
+In **View → YouTube Bridge**, paste a video, track, or playlist link. Click **Play video** for automatic video quality or **Listen** for audio only. The dialog closes when VLC accepts the request. **Open in browser** opens YouTube in your default browser.
 
 You can also drag a YouTube link from your browser into VLC's main window or paste it into **Media → Open Network Stream**. Direct links use video mode for YouTube and audio mode for YouTube Music. If a resolved link expires, open the original YouTube link again.
 
 To copy the watch link for a playing track, open **Tools → Media Information**. On the **General** tab, right-click the YouTube link and choose **Copy Link Location**. For a finished track, open **Information** from its playlist entry.
+
+The **General** tab also shows the track thumbnail once VLC downloads it. VLC's standard playlist view uses its usual row icons.
 
 ## Playlists
 
@@ -31,6 +41,52 @@ Use **Open in browser** to use your existing YouTube session or sign in there. P
 
 VLC playback uses anonymous yt-dlp requests and can break when YouTube changes stream delivery. YouTube restricts automated access in its [Terms of Service](https://www.youtube.com/t/terms). Use the browser option for official playback.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    User["VLC user"] --> Dialog["YouTube Bridge dialog"]
+    User --> URL["Dropped link or Open Network Stream"]
+    Dialog --> Links["Lua link parser"]
+    URL --> Links
+    Links --> Input["VLC input worker"]
+    Input --> Native["Native C shim"]
+    Native --> Rust["Rust request and resolver modules"]
+    Rust --> YTDLP["yt-dlp child process"]
+    YTDLP --> YouTube["YouTube"]
+    Native --> Player["VLC playback and artwork cache"]
+    Dialog --> Browser["Default browser for sign-in"]
+```
+
+- The Lua dialog and playlist parser share link validation and translate supported links into internal `ytbridge://` requests.
+- The native VLC module owns playlist expansion and playback item creation. It attaches the source URL, title, streams, and artwork metadata to VLC items and asks VLC to fetch the cover art.
+- Rust dispatches requests and validates resolver output. It runs yt-dlp directly with a timeout and VLC cancellation support. cbindgen generates the C declarations from the Rust FFI exports.
+- The Windows installer copies the Lua scripts and DLL into the user profile and updates `VLC_PLUGIN_PATH` for future VLC launches.
+
+### Playlist playback
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant VLC
+    participant Bridge as Native bridge
+    participant YTDLP as yt-dlp
+    User->>VLC: Open a public playlist link
+    VLC->>Bridge: Expand the playlist
+    Bridge->>YTDLP: List track IDs and titles
+    Bridge-->>VLC: Return ordered track entries
+    loop Each track VLC opens
+        VLC->>Bridge: Resolve track
+        Bridge->>YTDLP: Request stream URLs and metadata
+        Bridge-->>VLC: Return media, title, thumbnail, and watch link
+        VLC->>VLC: Play track and cache artwork
+    end
+```
+
 ## Core tests
 
 Run `cargo test --lib --locked --no-default-features` to test the Rust API without compiling the VLC shim. The core tests require neither VLC nor YouTube access. Windows also runs the subprocess timeout and cancellation tests.
+
+## Releases
+
+CI builds and tests Windows x64 on pushes to `main` and on version tags. To publish a release, update the Cargo version and push a matching tag such as `v0.2.0`. After the build and tests pass, GitHub Actions publishes the installer ZIP and its SHA-256 checksum.
