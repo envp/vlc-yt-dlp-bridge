@@ -66,21 +66,36 @@ static int ReadTrack(stream_t *stream, input_item_node_t *node)
 {
     const char *request = stream->psz_location;
     bool succeeded;
-    char *video = bridge_run(request, &succeeded, vlc_killed);
+    char *response = bridge_run(request, &succeeded, vlc_killed);
     if (!succeeded) {
-        msg_Warn(stream, "%s", video);
-        bridge_free(video);
+        msg_Warn(stream, "%s", response);
+        bridge_free(response);
         return VLC_EGENERIC;
     }
 
+    char *title = response;
+    char *artwork = strchr(title, '\n');
+    char *source = artwork == NULL ? NULL : strchr(artwork + 1, '\n');
+    char *video = source == NULL ? NULL : strchr(source + 1, '\n');
+    if (video == NULL) {
+        bridge_free(response);
+        return VLC_EGENERIC;
+    }
+    *artwork++ = '\0';
+    *source++ = '\0';
+    *video++ = '\0';
     char *audio = strchr(video, '\n');
     if (audio != NULL)
         *audio++ = '\0';
-    input_item_t *item = input_item_NewStream(video, "YouTube", -1);
+    input_item_t *item = input_item_NewStream(video, title, -1);
     if (item == NULL) {
-        bridge_free(video);
+        bridge_free(response);
         return VLC_ENOMEM;
     }
+    input_item_SetTitle(item, title);
+    input_item_SetURL(item, source);
+    if (*artwork != '\0')
+        input_item_SetArtworkURL(item, artwork);
     int result = VLC_SUCCESS;
     if (audio != NULL) {
         size_t size = strlen(audio) + sizeof("input-slave=");
@@ -98,7 +113,7 @@ static int ReadTrack(stream_t *stream, input_item_node_t *node)
     if (result == VLC_SUCCESS && input_item_node_AppendItem(node, item) == NULL)
         result = VLC_ENOMEM;
     input_item_Release(item);
-    bridge_free(video);
+    bridge_free(response);
     return result;
 }
 

@@ -3,6 +3,7 @@ EXPORTS
     input_item_AddOption
     input_item_NewExt
     input_item_Release
+    input_item_SetMeta
     input_item_node_AppendItem
     vlc_Log
     vlc_killed

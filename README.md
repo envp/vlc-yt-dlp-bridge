@@ -19,6 +19,8 @@ Restart VLC and choose **View → YouTube Bridge**. Paste a video, track, or pla
 
 You can also drag a YouTube link from your browser into VLC's main window or paste it into **Media → Open Network Stream**. Direct links use video mode for YouTube and audio mode for YouTube Music. If a resolved link expires, open the original YouTube link again.
 
+To copy the watch link for a playing track, open **Tools → Media Information**. On the **General** tab, right-click the YouTube link and choose **Copy Link Location**. For a finished track, open **Information** from its playlist entry.
+
 ## Playlists
 
 To queue a public playlist, use its playlist page link with `/playlist?list=…`. A watch link opens its individual video even when the link includes a playlist ID. VLC expands the playlist and resolves each track when it starts, so a transition can take a few seconds. Use **Open in browser** for playlists that require an account.

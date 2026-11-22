@@ -3,7 +3,7 @@ use std::{env, process::Command};
 use crate::process::{run_hidden, Cancelled};
 use crate::youtube::{playlist_url, video_id_is_valid};
 
-fn media_url_is_valid(url: &str) -> bool {
+fn allowed_https_url(url: &str, domains: &[&str]) -> bool {
     if url.contains('#')
         || url
             .bytes()
@@ -20,7 +20,13 @@ fn media_url_is_valid(url: &str) -> bool {
     let host_chars_valid = host
         .bytes()
         .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'.');
-    host_chars_valid && (host == "googlevideo.com" || host.ends_with(".googlevideo.com"))
+    host_chars_valid
+        && domains.iter().any(|domain| {
+            host == *domain
+                || host
+                    .strip_suffix(domain)
+                    .is_some_and(|prefix| prefix.ends_with('.'))
+        })
 }
 
 const HEIGHTS: [u16; 12] = [
@@ -61,7 +67,15 @@ pub(crate) fn resolve(url: &str, mode: &str, cancelled: Cancelled) -> Result<Str
     if listing {
         args.extend(["--print", "%(height)s"]);
     } else {
-        args.push("--get-url");
+        args.extend([
+            "--encoding",
+            "utf-8",
+            "--print",
+            "%(title)j",
+            "--print",
+            "%(thumbnail)s",
+            "--get-url",
+        ]);
     }
     let output = run_yt_dlp(url, &args, cancelled)?;
     if listing {
@@ -80,14 +94,47 @@ pub(crate) fn resolve(url: &str, mode: &str, cancelled: Cancelled) -> Result<Str
             Ok(heights.join("\n"))
         };
     }
-    let urls: Vec<_> = output.lines().collect();
-    if (urls.len() == 1 || (mode != "audio" && mode != "compatible" && urls.len() == 2))
-        && urls.iter().all(|url| media_url_is_valid(url))
-    {
-        Ok(urls.join("\n"))
+    playback_response(&output, mode != "audio" && mode != "compatible", url)
+}
+
+// The native shim reads title, artwork, source page, media, and optional audio.
+fn playback_response(
+    output: &str,
+    allow_split: bool,
+    source: &str,
+) -> Result<String, &'static str> {
+    const INVALID: &str = "YouTube did not return a supported VLC stream.";
+    let mut lines = output.lines();
+    let title = serde_json::from_str::<String>(lines.next().ok_or(INVALID)?).unwrap_or_default();
+    let title = title.replace(char::is_control, " ");
+    let title = if title.trim().is_empty() {
+        "YouTube video"
     } else {
-        Err("YouTube did not return a supported VLC stream.")
+        title.trim()
+    };
+    let thumbnail = lines.next().ok_or(INVALID)?;
+    let artwork = if allowed_https_url(
+        thumbnail,
+        &["ytimg.com", "ggpht.com", "googleusercontent.com"],
+    ) {
+        thumbnail
+    } else {
+        ""
+    };
+    let media = lines.next().ok_or(INVALID)?;
+    let audio = lines.next();
+    if !allowed_https_url(media, &["googlevideo.com"])
+        || audio.is_some_and(|url| !allow_split || !allowed_https_url(url, &["googlevideo.com"]))
+        || lines.next().is_some()
+    {
+        return Err(INVALID);
     }
+    let mut response = format!("{title}\n{artwork}\n{source}\n{media}");
+    if let Some(audio) = audio {
+        response.push('\n');
+        response.push_str(audio);
+    }
+    Ok(response)
 }
 
 fn run_yt_dlp(url: &str, args: &[&str], cancelled: Cancelled) -> Result<String, &'static str> {
@@ -164,5 +211,38 @@ pub(crate) fn playlist_entries(id: &str, cancelled: Cancelled) -> Result<String,
         Err("No public tracks found. Try opening the playlist in your browser.")
     } else {
         Ok(entries.join("\n"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::playback_response;
+
+    const SOURCE: &str = "https://www.youtube.com/watch?v=SmMS5H5XChU";
+
+    #[test]
+    fn carries_title_and_artwork_with_split_playback() {
+        let output = concat!(
+            "\"Wasp / Behind the Wall\\nLive\"\r\n",
+            "https://i.ytimg.com/vi/abc/hqdefault.jpg\r\n",
+            "https://r1.googlevideo.com/video\r\n",
+            "https://r1.googlevideo.com/audio\r\n"
+        );
+        let response = playback_response(output, true, SOURCE).unwrap();
+        assert_eq!(
+            response,
+            format!("Wasp / Behind the Wall Live\nhttps://i.ytimg.com/vi/abc/hqdefault.jpg\n{SOURCE}\nhttps://r1.googlevideo.com/video\nhttps://r1.googlevideo.com/audio")
+        );
+        assert!(playback_response(output, false, SOURCE).is_err());
+    }
+
+    #[test]
+    fn omits_untrusted_artwork_without_rejecting_the_stream() {
+        let output =
+            "\"Song\"\nhttps://i.ytimg.com.example/image.jpg\nhttps://r1.googlevideo.com/audio\n";
+        assert_eq!(
+            playback_response(output, false, SOURCE).unwrap(),
+            format!("Song\n\n{SOURCE}\nhttps://r1.googlevideo.com/audio")
+        );
     }
 }
